@@ -25,9 +25,10 @@ domain_arrange.pl - Filtering and rearranging domains inside a protein
     Note:
         .tsv need satisfied the following rules for usage
         Col1: Gene/Protein ids
-        Col2: Domain start
-        Col3: Domain end
-        Col4: E-value
+        Col2: Domain
+        Col3: Domain start
+        Col4: Domain end
+        Col5: E-value
         Print to stdout, please redirect to the file
 
 =cut
