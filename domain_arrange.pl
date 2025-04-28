@@ -8,6 +8,7 @@
 use strict;
 use warnings;
 use AlignDB::IntSpan;
+use GetOpt::Long;
 
 =head1 NAME
 
