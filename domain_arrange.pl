@@ -9,7 +9,7 @@
 use strict;
 use warnings;
 use AlignDB::IntSpan;
-use GetOpt::Long;
+use Getopt::Long;
 use Math::BigFloat;
 use List::Util qw(sort);
 
