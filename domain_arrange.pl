@@ -3,12 +3,15 @@
 # domain_arrange.pl -- Filtering and rearranging domains inside a protein
 #
 # Author: Yuqian Jiang
-# Created: 2025-04-22
+# Created: 2023-03-22
+# Updated: 2025-04-29 Add more sub programs
 
 use strict;
 use warnings;
 use AlignDB::IntSpan;
 use GetOpt::Long;
+use Math::BigFloat;
+use List::Util qw(sort);
 
 =head1 NAME
 
@@ -47,44 +50,71 @@ if ( !defined $input ) {
 # Main program
 #----------------------------------------------------------#
 
-my $gene;
 my @print;
-my $domain_set = AlignDB::IntSpan -> new;
+our %DOMAIN;
+our $domain_set = AlignDB::IntSpan -> new;
+Math::BigFloat -> accuracy(50);
 
-open my $TSV_IN, "<", $input or die "Error: cannot read file in.\n";
+load_domains($input, \%DOMAIN);
 
-while (<$TSV_IN>) {
-    chomp;
-    my $print_list = $_;
-    my @array = split/\t/, $_;
-    if ( ! defined $gene ) {
-        $gene = $array[0];
-        push @print, $print_list;
-        $domain_set -> add_range($array[2], $array[3]);
-    }
-    else {
-        if ( $array[0] eq $gene ) {
-            my $test_set = AlignDB::IntSpan -> new;
-            $test_set -> add_range($array[2], $array[3]);
-            my $result = $domain_set -> intersect($test_set);
-            if ( $result -> is_empty  ){
-                $domain_set -> add_range($array[2], $array[3]);
-                push @print, $print_list;
-            }
-        }
-        else {
-            print join "\n", @print;
-            print "\n";
-            $domain_set -> clear;
-            $gene = $array[0];
-            @print = ();
-            push @print, $print_list;
-            $domain_set -> add_range($array[2], $array[3])
-        }
+for my $gene (sort keys %DOMAIN){
+    my @sorted = sort_domains($DOMAIN{$gene});
+    my @filtered = filter_domains(@sorted);
+    for (@filtered) {
+        print $_ -> {line} . "\n";
     }
 }
 
-END {
-    print join "\n", @print;
-    print "\n";
+#----------------------------------------------------------#
+# Sub program
+#----------------------------------------------------------#
+
+sub load_domains {
+    my ($file, $hash) = @_;
+    open my $fh, "<", $file or die "Cannot open $file: $!";
+
+    while (<$fh>) {
+        chomp;
+        my @fields = split /\t/;
+        next unless @fields == 5;
+
+        my ($gene, $name, $start, $end, $evalue) = @fields;
+        $evalue = Math::BigFloat -> new($evalue);
+
+        push @{ $hash->{$gene} }, {
+            name   => $name,
+            start  => $start,
+            end    => $end,
+            evalue => $evalue,
+            line   => $_
+        };
+    }
+    close $fh;
 }
+
+sub sort_domains {
+    my ($domains) = @_;
+    return sort {
+        $a->{evalue} <=> $b->{evalue} ||
+        $a->{start} <=> $b->{start}
+    } @$domains;
+}
+
+sub filter_domains {
+    my @domains = @_;
+    my @result;
+    my $span = AlignDB::IntSpan -> new;
+
+    foreach my $dom (@domains) {
+        my $test = AlignDB::IntSpan -> new;
+        $test -> add_range($dom -> {start}, $dom -> {end});
+
+        if ($span -> intersect($test) -> is_empty) {
+            $span -> add($test);
+            push @result, $dom;
+        }
+    }
+    return @result;
+}
+
+__END__
