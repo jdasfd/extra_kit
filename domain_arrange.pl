@@ -49,9 +49,7 @@ if ( !defined $input ) {
 # Main program
 #----------------------------------------------------------#
 
-my @print;
 our %DOMAIN;
-our $domain_set = AlignDB::IntSpan -> new;
 Math::BigFloat -> accuracy(50);
 
 load_domains($input, \%DOMAIN);
@@ -59,6 +57,7 @@ load_domains($input, \%DOMAIN);
 for my $gene (sort keys %DOMAIN){
     my @sorted = sort_domains($DOMAIN{$gene});
     my @filtered = filter_domains(@sorted);
+    @filtered = sort { $a -> {start} <=> $b -> {start} } @filtered;
     for (@filtered) {
         print $_ -> {line} . "\n";
     }
@@ -80,7 +79,9 @@ sub load_domains {
         my ($gene, $name, $start, $end, $evalue) = @fields;
         $evalue = Math::BigFloat -> new($evalue);
 
+        my $index = scalar @{ $hash -> {$gene} // [] };
         push @{ $hash->{$gene} }, {
+            index  => $index,
             name   => $name,
             start  => $start,
             end    => $end,
@@ -95,7 +96,7 @@ sub sort_domains {
     my ($domains) = @_;
     return sort {
         $a->{evalue} <=> $b->{evalue} ||
-        $a->{start} <=> $b->{start}
+        $a->{index} <=> $b->{index}
     } @$domains;
 }
 
