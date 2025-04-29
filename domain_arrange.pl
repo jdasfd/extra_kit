@@ -11,7 +11,6 @@ use warnings;
 use AlignDB::IntSpan;
 use Getopt::Long;
 use Math::BigFloat;
-use List::Util qw(sort);
 
 =head1 NAME
 
