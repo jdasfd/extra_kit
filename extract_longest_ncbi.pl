@@ -5,6 +5,7 @@
 # Author: Yuqian Jiang
 # Created: 2025-05-02
 # Updated: 2025-05-03 Deal with the pseudogene in the script
+# Updated: 2025-05-03 Filter the one without CDS regions
 
 use strict;
 use warnings;
@@ -108,6 +109,7 @@ for my $gene_id (keys %GENE_FORMAT) {
     while (my ($mrna, $len) = each %mrnas) {
         ($longest, $max_len) = ($mrna, $len) if $len > $max_len;
     }
+    next if $max_len == 0;
 
     print $out_fh "$gene_id\t$longest\t$max_len\t$type\n";
 }
