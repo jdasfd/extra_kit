@@ -99,7 +99,7 @@ foreach my $gene_id (keys %GENE_FORMAT) {
         ($max_len, $longest_mrna) = ($len, $mrna) if $len > $max_len;
     }
     next if $longest_mrna eq ""; # skip those ncrna
-    print "$gene_id\t$longest_mrna\t$max_len\n";
+    print $out_fh "$gene_id\t$longest_mrna\t$max_len\n";
 }
 
 close $out_fh;
