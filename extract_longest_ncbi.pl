@@ -3,7 +3,8 @@
 # extract_longest_ncbi.pl -- extract longest peptides or proteins from ncbi gff3
 #
 # Author: Yuqian Jiang
-# Created: 2025-05-03
+# Created: 2025-05-02
+# Updated: 2025-05-03 Deal with the pseudogene in the script
 
 use strict;
 use warnings;
@@ -60,29 +61,30 @@ while (<$GFF_IN>) {
     next if (/^\#/ || /^\s+$/ || /^$/);
 
     my @arrays = split/\t/;
-    if ($arrays[2] eq "gene") {
+    if ($arrays[2] =~ /^(gene|pseudogene)$/) {
         my ($gene_id) = $arrays[8] =~ /ID=([^;]+)/;
-        $GENE_FORMAT{$gene_id} = {};
+        $GENE_FORMAT{$gene_id} = { type => $arrays[2], mrnas => {}};
     }
-    elsif ($arrays[2] eq "mRNA" || $arrays[2] eq "transcript") {
+    elsif ($arrays[2] =~ /^(mRNA|transcript)$/) {
         my ($transcript_id) = $arrays[8] =~ /ID=([^;]+)/;
         my ($gene_parent) = $arrays[8] =~ /Parent=([^;]+)/;
         unless (exists $GENE_FORMAT{$gene_parent}) {
-            die "Error at line $line_num: can't find gene parent, index error!\n";
+            die "Error at line $line_num: Paret $gene_parent not found, index error!\n";
         }
-        else {
-            $MRNA_GENE{$transcript_id} = $gene_parent;
-            $GENE_FORMAT{$gene_parent}{$transcript_id} = 0;
-        }
+
+        $MRNA_GENE{$transcript_id} = $gene_parent;
+        $GENE_FORMAT{$gene_parent} -> {mrnas} -> {$transcript_id} = 0;
     }
     elsif ($arrays[2] eq "CDS") {
         my ($transcript_parent) = $arrays[8] =~ /Parent=([^;]+)/;
+        next unless exists $MRNA_GENE{$transcript_parent};
+
         my $length = $arrays[4] - $arrays[3] + 1;
-        if (my $gene_id = $MRNA_GENE{$transcript_parent}) {
-            $GENE_FORMAT{$gene_id}{$transcript_parent} += $length;
-        }
+        my $gene_id = $MRNA_GENE{$transcript_parent};
+        $GENE_FORMAT{$gene_id} -> {mrnas} {$transcript_parent} += $length;
     }
 }
+
 
 # output
 my $out_fh;
@@ -90,16 +92,24 @@ if ( lc($output) eq "stdout" ) {
     $out_fh = *STDOUT;
 }
 else {
-    open $out_fh, ">", $output;
+    open $out_fh, ">", $output or die "Can't write to $output: $!";
 }
 
-foreach my $gene_id (keys %GENE_FORMAT) {
-    my ($max_len, $longest_mrna) = (0, '');
-    while (my ($mrna, $len) = each %{$GENE_FORMAT{$gene_id}}) {
-        ($max_len, $longest_mrna) = ($len, $mrna) if $len > $max_len;
+print $out_fh "Gene_ID\tLongest_mRNA\tLength\tType\n";
+
+for my $gene_id (keys %GENE_FORMAT) {
+    my $gene_info = $GENE_FORMAT{$gene_id};
+    my $type = $gene_info -> {type};
+    my %mrnas = %{$gene_info -> {mrnas}};
+
+    next unless %mrnas;
+
+    my ($longest, $max_len) = ('', 0);
+    while (my ($mrna, $len) = each %mrnas) {
+        ($longest, $max_len) = ($mrna, $len) if $len > $max_len;
     }
-    next if $longest_mrna eq ""; # skip those ncrna
-    print $out_fh "$gene_id\t$longest_mrna\t$max_len\n";
+
+    print $out_fh "$gene_id\t$longest\t$max_len\t$type\n";
 }
 
 close $out_fh;
