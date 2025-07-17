@@ -5,6 +5,8 @@
 # Author: Yuqian Jiang
 # Created: 2023-03-22
 # Decided to put it into RAID tool-box for analyzing
+# Change logs
+# 2025-07-17: rename the script - long2mtx; add more notes for better describing this
 
 use strict;
 use warnings;
@@ -19,17 +21,17 @@ use Path::Tiny;
 
 =head1 NAME
 
-result_pic.pl - a simple script for show elements existence or their repeated times
+long2mtx.pl - convert long data to a matrix
 
 =head1 SYNOPSIS
 
-    perl result_pic.pl -l <list_file> -n <headline_name> -i <tsv_file> -t <circle|count>
+    perl long2mtx.pl -l <list_file> -n <headline_name> -i <tsv_file> -t <circle|count>
       Options:
         --help          -h                  brief help message
         --list          -l  STR             list file contains elements for counting
-        --name          -n  STR             headline first name in (A\B) format
-        --input         -i  STR             counting files in tsv (col1: sample names, col2: elements)
-        --type          -t  circle|count    output circle (contains or not) or count (contains how many)
+        --name          -n  STR             headline first name in (A\B) format (matrix [1,1] position)
+        --input         -i  STR             counting files in tsv (col1: sample names, col2: elements; long data)
+        --type          -t  circle|count    output circle (whether exists) or count (contains how many)
 
 =cut
 
