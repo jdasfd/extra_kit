@@ -3,10 +3,10 @@
 # A simple script for generating a matrix.
 #
 # Author: Yuqian Jiang
-# Created: 2023-03-22
-# Decided to put it into RAID tool-box for analyzing
+# Created: 2023-03-22, decided to put it into RAD tool-box for analyzing
 # Change logs
 # 2025-07-17: rename the script - long2mtx; add more notes for better describing this
+# 2025-07-20: mv this script to extra_kit - a useful script for more tasks
 
 use strict;
 use warnings;
