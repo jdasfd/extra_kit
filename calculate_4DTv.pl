@@ -4,8 +4,9 @@
 #
 # Author: Yuqian Jiang (refactored from original)
 # Original authors: Sun Ming'an, Fan Wei, Li Jun (BGI, 2008)
-# Change logs
-# 2026-07-31: refactor as parameterized calculator; add multiple codon table support; auto-detect 4-fold degenerate codons; modular design
+# Change logs:
+# 2026-08-02: refactor as parameterized calculator; add multiple codon table support; auto-detect 4-fold degenerate codons; modular design
+# 2026-08-02: bug fixed: use of uninitialized value $fre{"x"}
 
 use strict;
 use warnings;
@@ -119,7 +120,7 @@ sub calculate_4dtv {
     my %four_fold  = %$four_fold_ref;
 
     my ($codon_4d, $codon_4dt) = (0, 0);
-    my %fre = ();    # base frequency at 4-fold degenerate sites
+    my %fre = (A => 0, C => 0, G => 0, T => 0);    # base frequency at 4-fold sites
     my %transversion = (
         A => 'TC', C => 'AG', G => 'TC', T => 'AG',
     );
