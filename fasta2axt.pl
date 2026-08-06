@@ -10,7 +10,7 @@
 #   - parseFastaIntoAXT.pl (KaKs_Calculator, Zhang Z et al. 2006)
 # Change logs
 # 2026-08-02: refactor as parameterized converter; modular design; fix AXT format to match KaKs_Calculator specification
-#
+# 2026-08-05: add a new feature: support multiple sequences
 
 use strict;
 use warnings;
@@ -55,28 +55,31 @@ if (defined $output && $output ne '-') {
 #==============================================================================
 my $records = parse_fasta($fasta);
 
-# Validate: exactly 2 sequences
-die "Error: Input must contain exactly 2 sequences for AXT format. Found "
-    . scalar(@$records) . "\n" unless @$records == 2;
+# Validate: at least 2 sequences
+die "Error: Input must contain at least 2 sequences for AXT format. Found "
+    . scalar(@$records) . "\n" unless @$records >= 2;
 
-my ($id1, $seq1) = @{$records->[0]};
-my ($id2, $seq2) = @{$records->[1]};
+#==============================================================================
+# Write one AXT block per unordered pair (KaKs_Calculator format)
+#==============================================================================
+for my $i (0 .. $#$records - 1) {
+    for my $j ($i + 1 .. $#$records) {
+        my ($id_i, $seq_i) = @{ $records->[$i] };
+        my ($id_j, $seq_j) = @{ $records->[$j] };
 
-# Validate equal length
-if (length($seq1) != length($seq2)) {
-    warn "Warning: Sequences are not equal in length! "
-       . "Seq1: " . length($seq1) . ", Seq2: " . length($seq2) . "\n"
-       . "KaKs_Calculator will likely fail. Please check your alignment.\n";
+        # Validate equal length
+        if (length($seq_i) != length($seq_j)) {
+            warn "Warning: $id_i and $id_j are not equal in length ("
+               . length($seq_i) . " vs " . length($seq_j) . "). "
+               . "KaKs_Calculator will likely fail. Please check your alignment.\n";
+        }
+
+        print "$id_i-$id_j\n";
+        print "$seq_i\n";
+        print "$seq_j\n";
+        print "\n";    # AXT blocks are separated by a blank line
+    }
 }
-
-#==============================================================================
-# Write AXT (KaKs_Calculator format)
-#==============================================================================
-my $caption = "$id1-$id2";
-print "$caption\n";
-print "$seq1\n";
-print "$seq2\n";
-print "\n";    # AXT blocks are separated by a blank line
 
 #==============================================================================
 # Subroutines
