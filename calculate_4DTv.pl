@@ -7,6 +7,7 @@
 # Change logs:
 # 2026-08-02: refactor as parameterized calculator; add multiple codon table support; auto-detect 4-fold degenerate codons; modular design
 # 2026-08-02: bug fixed: use of uninitialized value $fre{"x"}
+# 2026-08-10: bug fixed: "Can't take log of 0" — guard HKY85 $a term with $arg_a > 0 check
 
 use strict;
 use warnings;
@@ -157,18 +158,23 @@ sub calculate_4dtv {
             && $fre{A} != 0 && $fre{C} != 0
             && $fre{G} != 0 && $fre{T} != 0) {
 
-            my $a = -1 * log(
-                1 - $V * ($fre{T}*$fre{C}*$fre{R}/$fre{Y}
-                         + $fre{A}*$fre{G}*$fre{Y}/$fre{R})
-                / (2 * ($fre{T}*$fre{C}*$fre{R} + $fre{A}*$fre{G}*$fre{Y}))
-            );
+            my $arg_a = 1 - $V * ($fre{T}*$fre{C}*$fre{R}/$fre{Y}
+                                 + $fre{A}*$fre{G}*$fre{Y}/$fre{R})
+                / (2 * ($fre{T}*$fre{C}*$fre{R} + $fre{A}*$fre{G}*$fre{Y}));
 
-            if (1 - $V / (2 * $fre{Y} * $fre{R}) > 0) {
-                my $b = -1 * log(1 - $V / (2 * $fre{Y} * $fre{R}));
-                $d = 2 * $a * ($fre{T}*$fre{C}/$fre{Y} + $fre{A}*$fre{G}/$fre{R})
-                   - 2 * $b * ($fre{T}*$fre{C}*$fre{R}/$fre{Y}
-                              + $fre{A}*$fre{G}*$fre{Y}/$fre{R}
-                              - $fre{Y}*$fre{R});
+            if ($arg_a > 0) {
+                my $a = -1 * log($arg_a);
+
+                if (1 - $V / (2 * $fre{Y} * $fre{R}) > 0) {
+                    my $b = -1 * log(1 - $V / (2 * $fre{Y} * $fre{R}));
+                    $d = 2 * $a * ($fre{T}*$fre{C}/$fre{Y} + $fre{A}*$fre{G}/$fre{R})
+                       - 2 * $b * ($fre{T}*$fre{C}*$fre{R}/$fre{Y}
+                                  + $fre{A}*$fre{G}*$fre{Y}/$fre{R}
+                                  - $fre{Y}*$fre{R});
+                }
+                else {
+                    $d = 'NA';
+                }
             }
             else {
                 $d = 'NA';
