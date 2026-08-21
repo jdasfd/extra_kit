@@ -8,7 +8,8 @@
 
 use strict;
 use warnings;
-use Graph;
+use Graph::Directed;
+use Graph::Undirected;
 use Getopt::Long;
 use List::Util qw(min max);
 
