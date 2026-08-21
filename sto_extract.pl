@@ -13,51 +13,62 @@ use autodie;
 use Getopt::Long;
 use File::Path qw(make_path);
 
-=head1 NAME
+Getopt::Long::Configure('no_ignore_case');
 
-sto_extract.pl - extracting stockholm alignments or hmm profiles from Pfam files
-
-=head1 SYNOPSIS
-
-perl sto_extract.pl -l <acc.lst> -s <Pfam-A.seed|Pfam-A.hmm> [options]
-
-Options:
-    --list   -l STR   a list file of accessions, one per line (e.g. PF00931.29 or PF00931, both supported)
-    --seed   -s STR   the Pfam-A.seed (sto blocks) or Pfam-A.hmm file
-    --dir    -d STR   output dir, each acc will be written as <dir>/<ACC>.sto or <ACC>.hmm; without it, cat to STDOUT
-    --thread -t INT   number of processes for per-file output (default: 1), only works with --dir
-    --index  -x STR   index file for random access (default: <seed>.idx), will be used automatically if it exists
-    --mkidx          build the index from the seed file and exit
-    --help   -h      show help message
-
-Examples:
-    # build an index once, speeds up all later runs (low memory)
-    perl sto_extract.pl -s Pfam-A.seed --mkidx
-
-    # extract and cat all seed alignments to one file
-    perl sto_extract.pl -l CL0023.hmm.lst -s Pfam-A.seed > CL0023.sto
-
-    # extract each seed alignment into a dir with 10 processes
-    perl sto_extract.pl -l CL0023.hmm.lst -s Pfam-A.seed -d sto/ -t 10
-
-=cut
+my ( $list, $seed, $dir, $thread, $index, $mkidx, $help );
 
 GetOptions(
-    'help|h'     => sub { Getopt::Long::HelpMessage(0) },
-    'list|l=s'   => \( my $list ),
-    'seed|s=s'   => \( my $seed ),
-    'dir|d=s'    => \( my $dir ),
-    'thread|t=i' => \( my $thread = 1 ),
-    'index|x=s'  => \( my $index ),
-    'mkidx'      => \( my $mkidx ),
-) or Getopt::Long::HelpMessage(1);
+    'help|h'     => \$help,
+    'list|l=s'   => \$list,
+    'seed|s=s'   => \$seed,
+    'dir|d=s'    => \$dir,
+    'thread|t=i' => \$thread,
+    'index|x=s'  => \$index,
+    'mkidx'      => \$mkidx,
+) or die "Use -h for help.\n";
+
+my $usage = <<'__GUIDE__';
+Extract stockholm alignments (Pfam-A.seed) or hmm profiles (Pfam-A.hmm)
+by a list of accessions. Both PF00931 and PF00931.29 are accepted.
+
+Usage:
+    perl sto_extract.pl -l <acc.lst> -s <Pfam-A.seed|Pfam-A.hmm> [options]
+
+Required:
+    -l,--list    <file>  accessions, one per line
+    -s,--seed    <file>  Pfam-A.seed (sto) or Pfam-A.hmm (hmm)
+
+Output:
+    -d,--dir     <dir>   write each acc as <dir>/<ACC>.sto or .hmm
+                         (default: cat all blocks to STDOUT)
+    -t,--thread  <int>   processes for per-file output (default: 1,
+                         only works with --dir)
+
+Index (fast repeated runs, low memory):
+    --mkidx              build the index from -s file and exit
+    -x,--index   <file>  index file (default: <seed>.idx, used
+                         automatically if it exists)
+
+Others:
+    -h,--help            show this help
+
+Examples:
+    perl sto_extract.pl -s Pfam-A.seed --mkidx
+    perl sto_extract.pl -l CL0023.hmm.lst -s Pfam-A.seed > CL0023.sto
+    perl sto_extract.pl -l CL0023.hmm.lst -s Pfam-A.seed -d sto/ -t 10
+
+__GUIDE__
+
+die $usage if $help;
+$thread = 1 unless defined $thread;
 
 if ( !defined $seed or !-e $seed ) {
-    die "Error: can't find the seed file [$seed].\n";
+    print STDERR "Error: can't find the seed file.\n";
+    die $usage;
 }
 if ( !defined $list and !$mkidx ) {
     print STDERR "Error: one of --list or --mkidx is required.\n";
-    die Getopt::Long::HelpMessage(1);
+    die $usage;
 }
 if ( $thread > 1 and !defined $dir ) {
     print STDERR "Warning: --thread only works with --dir, force to 1.\n";
