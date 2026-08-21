@@ -22,15 +22,11 @@ sto_extract.pl - extracting stockholm alignments or hmm profiles from Pfam files
 perl sto_extract.pl -l <acc.lst> -s <Pfam-A.seed|Pfam-A.hmm> [options]
 
 Options:
-    --list   -l STR   a list file of accessions, one per line
-                        (e.g. PF00931.29 or PF00931, both supported)
+    --list   -l STR   a list file of accessions, one per line (e.g. PF00931.29 or PF00931, both supported)
     --seed   -s STR   the Pfam-A.seed (sto blocks) or Pfam-A.hmm file
-    --dir    -d STR   output dir, each acc will be written as
-                        <dir>/<ACC>.sto or <ACC>.hmm; without it, cat to STDOUT
-    --thread -t INT   number of processes for per-file output (default: 1),
-                        only works with --dir
-    --index  -x STR   index file for random access (default: <seed>.idx),
-                        will be used automatically if it exists
+    --dir    -d STR   output dir, each acc will be written as <dir>/<ACC>.sto or <ACC>.hmm; without it, cat to STDOUT
+    --thread -t INT   number of processes for per-file output (default: 1), only works with --dir
+    --index  -x STR   index file for random access (default: <seed>.idx), will be used automatically if it exists
     --mkidx          build the index from the seed file and exit
     --help   -h      show help message
 
