@@ -534,6 +534,8 @@ for my $n ( sort keys %NODE ) {
     push @clusters, [$n] if !$linked{$n};
 }
 
+# canonical order: members sorted alphabetically inside a cluster
+for my $c (@clusters) { @$c = sort { $a cmp $b } @$c; }
 @clusters = sort { scalar(@$b) <=> scalar(@$a) || $a->[0] cmp $b->[0] } @clusters;
 
 #----------------------------------------------------------#
