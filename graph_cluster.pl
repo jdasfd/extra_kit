@@ -575,13 +575,4 @@ if ( defined $dir ) {
     close $SGL;
 }
 
-my $singletons = grep { scalar(@$_) == 1 } @clusters;
-printf STDERR
-    "Method: %s%s, cutoff: %s, %d nodes, %d clusters (largest: %d, singletons: %d).\n",
-    $method,
-    $method =~ /^(?:cc|lpa|louvain|mcl)$/ ? " (strategy: $strategy)" : '',
-    defined $cutoff_str ? $cutoff_str : 'none',
-    scalar( keys %NODE ), scalar @clusters,
-    scalar @{ $clusters[0] }, $singletons;
-
 __END__
