@@ -25,13 +25,13 @@ long2mtx.pl - convert long data to a matrix
 
 =head1 SYNOPSIS
 
-    perl long2mtx.pl -l <list_file> -n <headline_name> -i <tsv_file> -t <circle|count>
-      Options:
-        --help          -h                  brief help message
-        --list          -l  STR             list file contains elements for counting
-        --name          -n  STR             headline first name in (A\B) format (matrix [1,1] position)
-        --input         -i  STR             counting files in tsv (col1: sample names, col2: elements; long data)
-        --type          -t  circle|count    output circle (whether exists) or count (contains how many)
+perl long2mtx.pl -l <list_file> -n <headline_name> -i <tsv_file> -t <circle|count>
+    Options:
+    --help          -h                  brief help message
+    --list          -l  STR             list file contains elements for counting
+    --name          -n  STR             headline first name in (A\B) format (matrix [1,1] position)
+    --input         -i  STR             counting files in tsv (col1: sample names, col2: elements; long data)
+    --type          -t  circle|count    output circle (whether exists) or count (contains how many)
 
 =cut
 
