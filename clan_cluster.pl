@@ -155,7 +155,6 @@ for my $i ( 0 .. $#clusters ) {
 
 my $singletons = grep { scalar(@$_) == 1 } @clusters;
 printf STDERR
-    "Method: %s (strategy: %s), cutoff: %s, %d domains, %d pairs, %d clusters (largest: %d, singletons: %d).\n",
     $method, $method eq 'scc' ? '-' : $strategy, $cutoff_str,
     scalar(keys %all_domains), $pairs, scalar @clusters,
     scalar @{ $clusters[0] }, $singletons;
