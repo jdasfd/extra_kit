@@ -6,6 +6,7 @@
 # Created: 2025-05-02
 # Updated: 2025-05-03 Deal with the pseudogene in the script
 # Updated: 2025-05-03 Filter the one without CDS regions
+# Updated: 2026-09-01 Add hash sort feature (by transcript id) to avoid random output
 
 use strict;
 use warnings;
@@ -106,7 +107,9 @@ for my $gene_id (keys %GENE_FORMAT) {
     next unless %mrnas;
 
     my ($longest, $max_len) = ('', 0);
-    while (my ($mrna, $len) = each %mrnas) {
+    # sort keys for deterministic tie-breaking (equal CDS length -> smallest mRNA ID)
+    for my $mrna (sort keys %mrnas) {
+        my $len = $mrnas{$mrna};
         ($longest, $max_len) = ($mrna, $len) if $len > $max_len;
     }
     next if $max_len == 0;
