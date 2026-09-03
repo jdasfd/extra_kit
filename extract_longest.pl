@@ -9,6 +9,7 @@
 # Updated: 2026-09-01 Add hash sort feature (by transcript id) to avoid random output
 # Updated: 2026-09-03 Rename from extract_longest_ncbi.pl and add --ncbi|--liftoff option
 # Updated: 2026-09-03 Liftoff diagnostics go to a separate log (--log, default STDERR), table stays 4 columns
+# Updated: 2026-09-03 Add [single_transcript] gene-level log entry; one gene-level tag per gene for direct counting
 
 use strict;
 use warnings;
@@ -30,11 +31,15 @@ extract_longest.pl - extract longest CDS transcripts per gene from gff3
     perl extract_longest.pl (--ncbi|--liftoff) -i <gff3> -o <output>
       Options:
         --ncbi              gff3 comes from NCBI (original logic, untouched)
-        --liftoff           gff3 comes from the Liftoff/AGAT pipeline; problematic
-                            isoforms are reported to the log (see --log):
-                                [orphan]      mRNA whose parent gene is not found
-                                [multi_mrna]  gene retaining multiple mRNAs (with CDS lengths)
-                                [no_cds]      isoforms without CDS
+        --liftoff           gff3 comes from the Liftoff/AGAT pipeline; isoforms with
+                            CDS always win over those without (among CDS ones the
+                            longest CDS is kept, AGAT-like but order-independent);
+                            every gene gets exactly one gene-level log entry, plus
+                            isoform-level [no_cds] entries:
+                                [single_transcript]  gene with only one mRNA
+                                [multi_mrna]         gene with multiple mRNAs (with CDS lengths)
+                                [no_cds]             isoforms without CDS
+                                [orphan]             mRNA whose parent gene is not found
         --gff           -g  STR     gff annotation file
         --output        -o  STR     output files (also as the gff3 format), default: STDOUT
         --log           -l  STR     diagnostic log file (liftoff mode only), default: STDERR
@@ -147,17 +152,17 @@ for my $gene_id (sort keys %GENE_FORMAT) {
     # liftoff: audit the isoforms of this gene in the log
     if ($is_liftoff) {
         my @mrna_ids = sort keys %mrnas;
-        if ( @mrna_ids > 1 ) {
-            print $log_fh "[multi_mrna]\t$gene_id\t" . scalar(@mrna_ids) . "\t"
-                . join(";", map {"$_=$mrnas{$_}"} @mrna_ids) . "\n";
-        }
+        my $gene_tag = @mrna_ids > 1 ? "multi_mrna" : "single_transcript";
+        print $log_fh "[$gene_tag]\t$gene_id\t" . scalar(@mrna_ids) . "\t"
+            . join(";", map {"$_=$mrnas{$_}"} @mrna_ids) . "\n";
         for my $mrna_id (@mrna_ids) {
             print $log_fh "[no_cds]\t$gene_id\t$mrna_id\n" if $mrnas{$mrna_id} == 0;
         }
     }
 
     my ($longest, $max_len) = ('', 0);
-    # sort keys for deterministic tie-breaking (equal CDS length -> smallest mRNA ID)
+    # isoforms with CDS always win over those without (CDS-less length is 0);
+    # among CDS-containing ones keep the longest CDS, tie -> smallest mRNA ID
     for my $mrna (sort keys %mrnas) {
         my $len = $mrnas{$mrna};
         ($longest, $max_len) = ($mrna, $len) if $len > $max_len;
