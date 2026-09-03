@@ -8,6 +8,7 @@
 # Updated: 2025-05-03 Filter the one without CDS regions
 # Updated: 2026-09-01 Add hash sort feature (by transcript id) to avoid random output
 # Updated: 2026-09-03 Rename from extract_longest_ncbi.pl and add --ncbi|--liftoff option
+# Updated: 2026-09-03 Liftoff diagnostics go to a separate log (--log, default STDERR), table stays 4 columns
 
 use strict;
 use warnings;
@@ -29,11 +30,14 @@ extract_longest.pl - extract longest CDS transcripts per gene from gff3
     perl extract_longest.pl (--ncbi|--liftoff) -i <gff3> -o <output>
       Options:
         --ncbi              gff3 comes from NCBI (original logic, untouched)
-        --liftoff           gff3 comes from the Liftoff/AGAT pipeline; isoforms
-                            without CDS, mRNAs with an unfound parent gene, and
-                            genes retaining multiple mRNAs are reported on STDERR
+        --liftoff           gff3 comes from the Liftoff/AGAT pipeline; problematic
+                            isoforms are reported to the log (see --log):
+                                [orphan]      mRNA whose parent gene is not found
+                                [multi_mrna]  gene retaining multiple mRNAs (with CDS lengths)
+                                [no_cds]      isoforms without CDS
         --gff           -g  STR     gff annotation file
         --output        -o  STR     output files (also as the gff3 format), default: STDOUT
+        --log           -l  STR     diagnostic log file (liftoff mode only), default: STDERR
         --help          -h          brief help message
 
 =cut
@@ -43,7 +47,8 @@ GetOptions(
     'ncbi'       => \( my $flag_ncbi ),
     'liftoff'    => \( my $flag_liftoff ),
     'gff|g=s'    => \( my $gff_file ),
-    'output|o=s' => \( my $output = 'stdout' )
+    'output|o=s' => \( my $output = 'stdout' ),
+    'log|l=s'    => \( my $log_file )
 ) or Getopt::Long::HelpMessage(1);
 
 my $source_flag_num = ( defined $flag_ncbi ? 1 : 0 ) + ( defined $flag_liftoff ? 1 : 0 );
@@ -59,6 +64,17 @@ if ( !defined $gff_file ) {
 }
 elsif ( !path($gff_file) -> is_file ) {
     die "Error: can't find file [$gff_file].\n";
+}
+
+# log filehandle (liftoff diagnostics)
+my $log_fh = *STDERR;
+if ( defined $log_file ) {
+    if ($is_liftoff) {
+        open $log_fh, ">", $log_file or die "Can't write to $log_file: $!";
+    }
+    else {
+        print STDERR "Warning: --log only applies to --liftoff mode, option ignored.\n";
+    }
 }
 
 #----------------------------------------------------------#
@@ -85,10 +101,11 @@ while (<$GFF_IN>) {
         my ($transcript_id) = $arrays[8] =~ /ID=([^;]+)/;
         my ($gene_parent) = $arrays[8] =~ /Parent=([^;]+)/;
 
-        # liftoff: report and skip the mRNA whose parent gene is not indexed
+        # liftoff: log the mRNA whose parent gene is not indexed
         if ( $is_liftoff && !exists $GENE_FORMAT{$gene_parent} ) {
-            print STDERR "[orphan]\tline $line_num\tmrna=$transcript_id\tparent="
-                . ( defined $gene_parent ? $gene_parent : "NA" ) . "\n";
+            print $log_fh "[orphan]\tline $line_num\tmrna="
+                . ( defined $transcript_id ? $transcript_id : '--' )
+                . "\tparent=" . ( defined $gene_parent ? $gene_parent : '--' ) . "\n";
             next;
         }
         unless (exists $GENE_FORMAT{$gene_parent}) {
@@ -127,15 +144,15 @@ for my $gene_id (sort keys %GENE_FORMAT) {
 
     next unless %mrnas;
 
-    # liftoff: audit the isoforms of this gene on STDERR
+    # liftoff: audit the isoforms of this gene in the log
     if ($is_liftoff) {
         my @mrna_ids = sort keys %mrnas;
         if ( @mrna_ids > 1 ) {
-            print STDERR "[multi_mrna]\t$gene_id\t" . scalar(@mrna_ids) . "\t"
+            print $log_fh "[multi_mrna]\t$gene_id\t" . scalar(@mrna_ids) . "\t"
                 . join(";", map {"$_=$mrnas{$_}"} @mrna_ids) . "\n";
         }
         for my $mrna_id (@mrna_ids) {
-            print STDERR "[no_cds]\t$gene_id\t$mrna_id\n" if $mrnas{$mrna_id} == 0;
+            print $log_fh "[no_cds]\t$gene_id\t$mrna_id\n" if $mrnas{$mrna_id} == 0;
         }
     }
 
@@ -151,3 +168,4 @@ for my $gene_id (sort keys %GENE_FORMAT) {
 }
 
 close $out_fh;
+close $log_fh if fileno($log_fh) > 2;
