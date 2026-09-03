@@ -1,12 +1,13 @@
 #!/usr/bin/perl -w
 #
-# extract_longest_ncbi.pl -- extract longest peptides or proteins from ncbi gff3
+# extract_longest.pl -- extract longest CDS transcripts per gene from gff3
 #
 # Author: Yuqian Jiang
 # Created: 2025-05-02
 # Updated: 2025-05-03 Deal with the pseudogene in the script
 # Updated: 2025-05-03 Filter the one without CDS regions
 # Updated: 2026-09-01 Add hash sort feature (by transcript id) to avoid random output
+# Updated: 2026-09-03 Rename from extract_longest_ncbi.pl and add --ncbi|--liftoff option
 
 use strict;
 use warnings;
@@ -21,12 +22,16 @@ use Data::Dumper;
 
 =head1 NAME
 
-extract_longest_ncbi.pl - extract longest peptides or proteins from ncbi gff3
+extract_longest.pl - extract longest CDS transcripts per gene from gff3
 
 =head1 SYNOPSIS
 
-    perl extract_longest_ncbi.pl -i <gff3> -o <output>
+    perl extract_longest.pl (--ncbi|--liftoff) -i <gff3> -o <output>
       Options:
+        --ncbi              gff3 comes from NCBI (original logic, untouched)
+        --liftoff           gff3 comes from the Liftoff/AGAT pipeline; isoforms
+                            without CDS, mRNAs with an unfound parent gene, and
+                            genes retaining multiple mRNAs are reported on STDERR
         --gff           -g  STR     gff annotation file
         --output        -o  STR     output files (also as the gff3 format), default: STDOUT
         --help          -h          brief help message
@@ -35,9 +40,18 @@ extract_longest_ncbi.pl - extract longest peptides or proteins from ncbi gff3
 
 GetOptions(
     'help|h'     => sub { Getopt::Long::HelpMessage(0) },
+    'ncbi'       => \( my $flag_ncbi ),
+    'liftoff'    => \( my $flag_liftoff ),
     'gff|g=s'    => \( my $gff_file ),
     'output|o=s' => \( my $output = 'stdout' )
 ) or Getopt::Long::HelpMessage(1);
+
+my $source_flag_num = ( defined $flag_ncbi ? 1 : 0 ) + ( defined $flag_liftoff ? 1 : 0 );
+if ( $source_flag_num != 1 ) {
+    print STDERR "Error: please declare the annotation source by exactly one of --ncbi or --liftoff.\n";
+    die Getopt::Long::HelpMessage(1);
+}
+my $is_liftoff = defined $flag_liftoff ? 1 : 0;
 
 if ( !defined $gff_file ) {
     print STDERR "Error: please supply an annotation gff3 format file.\n";
@@ -70,6 +84,13 @@ while (<$GFF_IN>) {
     elsif ($arrays[2] =~ /^(mRNA|transcript)$/) {
         my ($transcript_id) = $arrays[8] =~ /ID=([^;]+)/;
         my ($gene_parent) = $arrays[8] =~ /Parent=([^;]+)/;
+
+        # liftoff: report and skip the mRNA whose parent gene is not indexed
+        if ( $is_liftoff && !exists $GENE_FORMAT{$gene_parent} ) {
+            print STDERR "[orphan]\tline $line_num\tmrna=$transcript_id\tparent="
+                . ( defined $gene_parent ? $gene_parent : "NA" ) . "\n";
+            next;
+        }
         unless (exists $GENE_FORMAT{$gene_parent}) {
             die "Error at line $line_num: Paret $gene_parent not found, index error!\n";
         }
@@ -99,12 +120,24 @@ else {
 
 print $out_fh "Gene_ID\tLongest_mRNA\tLength\tType\n";
 
-for my $gene_id (keys %GENE_FORMAT) {
+for my $gene_id (sort keys %GENE_FORMAT) {
     my $gene_info = $GENE_FORMAT{$gene_id};
     my $type = $gene_info -> {type};
     my %mrnas = %{$gene_info -> {mrnas}};
 
     next unless %mrnas;
+
+    # liftoff: audit the isoforms of this gene on STDERR
+    if ($is_liftoff) {
+        my @mrna_ids = sort keys %mrnas;
+        if ( @mrna_ids > 1 ) {
+            print STDERR "[multi_mrna]\t$gene_id\t" . scalar(@mrna_ids) . "\t"
+                . join(";", map {"$_=$mrnas{$_}"} @mrna_ids) . "\n";
+        }
+        for my $mrna_id (@mrna_ids) {
+            print STDERR "[no_cds]\t$gene_id\t$mrna_id\n" if $mrnas{$mrna_id} == 0;
+        }
+    }
 
     my ($longest, $max_len) = ('', 0);
     # sort keys for deterministic tie-breaking (equal CDS length -> smallest mRNA ID)
